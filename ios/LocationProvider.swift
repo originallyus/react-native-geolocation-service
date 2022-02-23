@@ -11,6 +11,7 @@ class LocationProvider: NSObject {
   private var locationOptions: LocationOptions? = nil
   private var isSingleUpdate: Bool = false
   private var timeoutTimer: Timer? = nil
+  private var tempLocation: CLLocation? = nil
 
   weak var delegate: LocationProviderDelegate?
 
@@ -77,6 +78,7 @@ class LocationProvider: NSObject {
     isSingleUpdate = false
     locationOptions = options
 
+      locationManager.startUpdatingHeading()
     locationManager.desiredAccuracy = options.accuracy
     locationManager.distanceFilter = options.distanceFilter
     locationManager.allowsBackgroundLocationUpdates = options.backgroundUpdates
@@ -120,14 +122,26 @@ extension LocationProvider: CLLocationManagerDelegate {
 
     delegate?.onPermissionChange(self, status: status)
   }
+    
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        guard let location: CLLocation = tempLocation else { return }
+        let newLocation = CLLocation(coordinate: location.coordinate, altitude: location.altitude, horizontalAccuracy: location.horizontalAccuracy, verticalAccuracy: location.verticalAccuracy, course: newHeading.trueHeading, speed: location.speed, timestamp: location.timestamp)
+        delegate?.onLocationChange(self, location: newLocation)
+    }
+
+
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    
+      let userLocation:CLLocation = locations[0] as CLLocation
+      print("raw", userLocation)
     guard let location: CLLocation = locations.last else { return }
-
+     
     #if DEBUG
-      NSLog("RNLocation: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      NSLog("RNLocation: \(location)")
     #endif
-
+    tempLocation = location
     delegate?.onLocationChange(self, location: location)
 
     if (isSingleUpdate) {
